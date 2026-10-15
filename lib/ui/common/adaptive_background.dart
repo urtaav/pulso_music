@@ -72,11 +72,7 @@ class AdaptiveBackground extends ConsumerWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               // Oscurece sin borrar el color: el texto se lee y el tinte se nota.
-              colors: [
-                Color(0x26000000),
-                Color(0x73000000),
-                Color(0xB30A0A0B),
-              ],
+              colors: [Color(0x26000000), Color(0x73000000), Color(0xB30A0A0B)],
               stops: [0, 0.5, 1],
             ),
           ),

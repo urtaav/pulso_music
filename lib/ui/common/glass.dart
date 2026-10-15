@@ -72,8 +72,10 @@ class GlassIconButton extends StatelessWidget {
     this.size = 48,
     this.iconSize = 22,
     this.filled = false,
+    this.iconColor,
   });
 
+  final Color? iconColor;
   final IconData icon;
   final VoidCallback? onPressed;
   final String tooltip;
@@ -95,7 +97,7 @@ class GlassIconButton extends StatelessWidget {
           child: Icon(
             icon,
             size: iconSize,
-            color: filled ? Colors.black : Palette.white,
+            color: iconColor ?? (filled ? Colors.black : Palette.white),
           ),
         ),
       ),

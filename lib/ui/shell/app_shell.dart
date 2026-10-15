@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/home_widget_sync.dart';
 import '../../data/library.dart';
 import '../../state/providers.dart';
-import '../player/mini_player.dart';
 import '../screens/home_screen.dart';
 import '../screens/library_screen.dart';
 import '../screens/search_screen.dart';
 import '../screens/settings_screen.dart';
 import '../visualizer/edge_visualizer.dart';
+import 'bottom_chrome.dart';
 import 'widget_actions.dart';
 
 /// Tabs with their own navigation stack, plus the mini player and the
@@ -23,11 +24,12 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  // Mismo orden que shellTabs; la búsqueda va al final (searchTabIndex).
   static const _tabs = [
     HomeScreen(),
     LibraryScreen(),
-    SearchScreen(),
     SettingsScreen(),
+    SearchScreen(),
   ];
   static const _rescanAfter = Duration(minutes: 5);
 
@@ -38,6 +40,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   final _widgetSync = HomeWidgetSync();
   late final AppLifecycleListener _lifecycle;
   int _tab = 0;
+  bool _collapsed = false;
   bool _bootstrapped = false;
   DateTime _lastScan = DateTime.now();
 
@@ -124,14 +127,39 @@ class _AppShellState extends ConsumerState<AppShell> {
       // Tocar la pestaña activa regresa a su pantalla principal.
       _navigators[index].currentState?.popUntil((route) => route.isFirst);
     } else {
-      setState(() => _tab = index);
+      setState(() {
+        _tab = index;
+        _collapsed = false;
+      });
     }
+  }
+
+  /// Collapse the bottom chrome while reading down, bring it back when the
+  /// user scrolls up, like iOS.
+  bool _onScroll(UserScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    final collapse = switch (notification.direction) {
+      ScrollDirection.reverse => true,
+      ScrollDirection.forward => false,
+      ScrollDirection.idle => _collapsed,
+    };
+    if (collapse != _collapsed) setState(() => _collapsed = collapse);
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
     // Mantiene vivo el registro de "escuchadas recientemente".
     ref.watch(recentsProvider);
+    final hasSong = ref.watch(currentSongProvider) != null;
+    final media = MediaQuery.of(context);
+    // El contenido se dibuja detrás de la barra de vidrio; este padding extra
+    // deja que el final de cada lista quede por encima de ella.
+    final contentMedia = media.copyWith(
+      padding: media.padding.copyWith(
+        bottom: media.padding.bottom + bottomChromeHeight(hasSong: hasSong),
+      ),
+    );
 
     return PopScope(
       canPop: false,
@@ -139,47 +167,35 @@ class _AppShellState extends ConsumerState<AppShell> {
         if (!didPop) _onBack();
       },
       child: Scaffold(
-        body: IndexedStack(
-          index: _tab,
+        body: Stack(
           children: [
-            for (var i = 0; i < _tabs.length; i++)
-              Navigator(
-                key: _navigators[i],
-                onGenerateRoute: (_) =>
-                    MaterialPageRoute<void>(builder: (_) => _tabs[i]),
+            NotificationListener<UserScrollNotification>(
+              onNotification: _onScroll,
+              child: MediaQuery(
+                data: contentMedia,
+                child: IndexedStack(
+                  index: _tab,
+                  children: [
+                    for (var i = 0; i < _tabs.length; i++)
+                      Navigator(
+                        key: _navigators[i],
+                        onGenerateRoute: (_) =>
+                            MaterialPageRoute<void>(builder: (_) => _tabs[i]),
+                      ),
+                  ],
+                ),
               ),
-          ],
-        ),
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const MiniPlayer(),
-            NavigationBar(
-              selectedIndex: _tab,
-              onDestinationSelected: _selectTab,
-              labelBehavior:
-                  NavigationDestinationLabelBehavior.onlyShowSelected,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: 'Inicio',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.library_music_outlined),
-                  selectedIcon: Icon(Icons.library_music_rounded),
-                  label: 'Biblioteca',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.search_rounded),
-                  label: 'Buscar',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.tune_outlined),
-                  selectedIcon: Icon(Icons.tune_rounded),
-                  label: 'Ajustes',
-                ),
-              ],
+            ),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: media.padding.bottom + 8,
+              child: BottomChrome(
+                tab: _tab,
+                onTab: _selectTab,
+                collapsed: _collapsed,
+                onExpand: () => setState(() => _collapsed = false),
+              ),
             ),
           ],
         ),

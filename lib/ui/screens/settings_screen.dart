@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../app/theme.dart';
 import '../../data/settings.dart';
 import '../../state/providers.dart';
+import '../common/sections.dart';
 import '../player/sleep_timer_sheet.dart';
 import '../visualizer/edge_visualizer.dart';
 import 'folders_screen.dart';
@@ -23,7 +24,7 @@ class SettingsScreen extends ConsumerWidget {
     return SafeArea(
       bottom: false,
       child: ListView(
-        padding: const EdgeInsets.only(bottom: 32),
+        padding: EdgeInsets.only(bottom: bottomInset(context)),
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(20, 20, 20, 8),

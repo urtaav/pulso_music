@@ -76,18 +76,26 @@ Future<ArtworkPalette> paletteFromBytes(Uint8List bytes) async {
   return ArtworkPalette(dominant: dominantColor(data.buffer.asUint8List()));
 }
 
-/// Palette of the song that's playing; generated covers fall back to accent.
-final currentPaletteProvider = FutureProvider<ArtworkPalette>((ref) async {
-  final song = ref.watch(currentSongProvider);
+/// Palette of any song's cover; generated covers fall back to the accent.
+final songPaletteProvider = FutureProvider.family<ArtworkPalette, int>((
+  ref,
+  songId,
+) async {
   final accent = Color(ref.watch(settingsProvider.select((s) => s.accent)));
-  if (song == null) return ArtworkPalette.fallback;
-  final bytes = await ref.read(artworkCacheProvider).get(song.id, 256);
+  final bytes = await ref.read(artworkCacheProvider).get(songId, 256);
   if (bytes == null) return ArtworkPalette(dominant: accent);
   try {
     return await paletteFromBytes(bytes);
   } on Exception {
     return ArtworkPalette(dominant: accent);
   }
+});
+
+/// Palette of the song that's playing.
+final currentPaletteProvider = FutureProvider<ArtworkPalette>((ref) async {
+  final song = ref.watch(currentSongProvider);
+  if (song == null) return ArtworkPalette.fallback;
+  return ref.watch(songPaletteProvider(song.id).future);
 });
 
 /// Last palette that finished loading. While the next one loads Riverpod

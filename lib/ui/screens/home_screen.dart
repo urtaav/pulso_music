@@ -1,12 +1,16 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/format.dart';
-import '../../data/song.dart';
+import '../../data/library.dart';
 import '../../state/providers.dart';
-import '../common/artwork.dart';
+import '../common/artwork_palette.dart';
+import '../common/glass.dart';
 import '../common/pressable.dart';
+import '../common/sections.dart';
 import '../common/song_tile.dart';
 import 'collection_screen.dart';
 
@@ -19,230 +23,226 @@ class HomeScreen extends ConsumerWidget {
     final library = ref.watch(libraryValueProvider);
     final recents = library.resolve(ref.watch(recentsProvider));
     final favorites = ref.watch(favoritesProvider);
+    final palette = ref.watch(stablePaletteProvider);
     final handler = ref.read(audioHandlerProvider);
-    final accent = Theme.of(context).colorScheme.primary;
-    final recentlyAdded = library.recentlyAdded.take(8).toList();
+    final recentlyAdded = library.recentlyAdded.take(6).toList();
+    final albumsForYou = _albumsOfTheDay(library);
+    final loading = libraryState.isLoading && library.songs.isEmpty;
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-            child: Text(greetingFor(DateTime.now()), style: TextStyles.display),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              libraryState.isLoading && library.songs.isEmpty
-                  ? 'Buscando tu música…'
-                  : '${library.songs.length} canciones · ${library.albums.length} álbumes',
-              style: TextStyles.numbers.copyWith(
-                color: Palette.grey,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          if (!libraryState.isLoading && library.songs.isEmpty)
-            _EmptyLibrary(
-              onRescan: () => ref.read(scannedSongsProvider.notifier).refresh(),
-            )
-          else ...[
-            SizedBox(
-              height: 112,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _QuickCard(
-                    label: 'Aleatorio\ntodo',
-                    icon: Icons.shuffle_rounded,
-                    background: accent,
-                    onTap: () =>
-                        handler.playSongs(library.songs, shuffle: true),
-                  ),
-                  _QuickCard(
-                    label: 'Favoritos',
-                    icon: Icons.favorite_rounded,
-                    background: Palette.coral,
-                    trailing: '${favorites.length}',
-                    onTap: () => openFavorites(context),
-                  ),
-                  _QuickCard(
-                    label: 'Agregadas\nrecientemente',
-                    icon: Icons.new_releases_outlined,
-                    background: Palette.card,
-                    onTap: () => openRecentlyAdded(context),
-                  ),
+    return Stack(
+      children: [
+        // Un toque del color de lo que suena arriba, como el inicio de iOS.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 360,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 600),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  palette.background.withValues(alpha: 0.9),
+                  Palette.background.withValues(alpha: 0),
                 ],
               ),
             ),
-            if (recents.isNotEmpty) ...[
-              const _SectionTitle('Escuchadas recientemente'),
-              SizedBox(
-                height: 214,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: recents.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 12),
-                  itemBuilder: (context, i) => _RecentCard(
-                    song: recents[i],
-                    color: [
-                      accent,
-                      Palette.coral,
-                      Palette.white,
-                      Palette.card,
-                    ][i % 4],
-                    onTap: () => handler.playSongs(recents, startIndex: i),
-                  ),
+          ),
+        ),
+        SafeArea(
+          bottom: false,
+          child: ListView(
+            padding: EdgeInsets.only(bottom: bottomInset(context)),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 2),
+                child: Text(
+                  greetingFor(DateTime.now()),
+                  style: TextStyles.display,
                 ),
               ),
-            ],
-            if (recentlyAdded.isNotEmpty) ...[
-              const _SectionTitle('Nuevas en tu teléfono'),
-              for (final (i, song) in recentlyAdded.indexed)
-                SongTile(
-                  song: song,
-                  onTap: () => handler.playSongs(recentlyAdded, startIndex: i),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  loading
+                      ? 'Buscando tu música…'
+                      : '${library.songs.length} canciones · '
+                            '${library.albums.length} álbumes',
+                  style: TextStyles.caption,
                 ),
+              ),
+              const SizedBox(height: 20),
+              if (!libraryState.isLoading && library.songs.isEmpty)
+                _EmptyLibrary(
+                  onRescan: () =>
+                      ref.read(scannedSongsProvider.notifier).refresh(),
+                )
+              else ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _QuickAction(
+                          label: 'Aleatorio',
+                          icon: Icons.shuffle_rounded,
+                          onTap: () =>
+                              handler.playSongs(library.songs, shuffle: true),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _QuickAction(
+                          label: 'Favoritos',
+                          icon: Icons.favorite_rounded,
+                          iconColor: Palette.coral,
+                          badge: favorites.isEmpty
+                              ? null
+                              : '${favorites.length}',
+                          onTap: () => openFavorites(context),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _QuickAction(
+                          label: 'Recientes',
+                          icon: Icons.schedule_rounded,
+                          onTap: () => openRecentlyAdded(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (recents.isNotEmpty) ...[
+                  const SectionHeader('Escuchadas recientemente'),
+                  _Carousel(
+                    itemCount: recents.length,
+                    itemBuilder: (i) => CoverCard(
+                      song: recents[i],
+                      title: recents[i].title,
+                      subtitle: recents[i].artist,
+                      onTap: () => handler.playSongs(recents, startIndex: i),
+                      onLongPress: () =>
+                          showSongActions(context, ref, recents[i]),
+                    ),
+                  ),
+                ],
+                if (albumsForYou.isNotEmpty) ...[
+                  const SectionHeader('Álbumes para hoy'),
+                  _Carousel(
+                    itemCount: albumsForYou.length,
+                    itemBuilder: (i) {
+                      final album = albumsForYou[i];
+                      return CoverCard(
+                        song: album.songs.first,
+                        title: album.title,
+                        subtitle: album.artist,
+                        onTap: () => openAlbum(context, album),
+                      );
+                    },
+                  ),
+                ],
+                if (recentlyAdded.isNotEmpty) ...[
+                  SectionHeader(
+                    'Nuevas en tu teléfono',
+                    onTap: () => openRecentlyAdded(context),
+                  ),
+                  for (final (i, song) in recentlyAdded.indexed) ...[
+                    if (i > 0) const RowSeparator(),
+                    SongTile(
+                      song: song,
+                      onTap: () =>
+                          handler.playSongs(recentlyAdded, startIndex: i),
+                    ),
+                  ],
+                ],
+              ],
             ],
-          ],
-        ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// A different handful of albums each day, stable during the day.
+  List<Album> _albumsOfTheDay(Library library) {
+    final albums = library.albums.where((a) => a.songs.length > 1).toList();
+    final now = DateTime.now();
+    albums.shuffle(Random(now.year * 1000 + now.month * 50 + now.day));
+    return albums.take(10).toList();
+  }
+}
+
+class _Carousel extends StatelessWidget {
+  const _Carousel({required this.itemCount, required this.itemBuilder});
+
+  final int itemCount;
+  final Widget Function(int index) itemBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 212,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: itemCount,
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
+        itemBuilder: (_, i) => itemBuilder(i),
       ),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-      child: Text(text, style: TextStyles.title.copyWith(fontSize: 22)),
-    );
-  }
-}
-
-class _QuickCard extends StatelessWidget {
-  const _QuickCard({
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
     required this.label,
     required this.icon,
-    required this.background,
     required this.onTap,
-    this.trailing,
+    this.iconColor,
+    this.badge,
   });
 
   final String label;
   final IconData icon;
-  final Color background;
   final VoidCallback onTap;
-  final String? trailing;
+  final Color? iconColor;
+  final String? badge;
 
   @override
   Widget build(BuildContext context) {
-    final ink = Palette.on(background);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Pressable(
-        onTap: onTap,
-        semanticLabel: label.replaceAll('\n', ' '),
-        child: Container(
-          width: 160,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(26),
-          ),
+    final accent = Theme.of(context).colorScheme.primary;
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: label,
+      child: GlassSurface(
+        radius: 22,
+        padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+        child: SizedBox(
+          height: 64,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  Icon(icon, color: ink),
+                  Icon(icon, color: iconColor ?? accent, size: 24),
                   const Spacer(),
-                  if (trailing != null)
-                    Text(
-                      trailing!,
-                      style: TextStyles.numbers.copyWith(color: ink),
-                    ),
+                  if (badge != null) Text(badge!, style: TextStyles.numbers),
                 ],
               ),
-              // Se encoge en vez de desbordarse si una palabra no cabe.
               FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment: Alignment.bottomLeft,
+                alignment: Alignment.centerLeft,
                 child: Text(
                   label,
-                  style: TextStyles.body.copyWith(
-                    color: ink,
-                    fontWeight: FontWeight.w700,
-                    height: 1.1,
-                  ),
+                  style: TextStyles.body.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecentCard extends StatelessWidget {
-  const _RecentCard({
-    required this.song,
-    required this.color,
-    required this.onTap,
-  });
-
-  final Song song;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = Palette.on(color);
-    return Pressable(
-      onTap: onTap,
-      semanticLabel: '${song.title}, ${song.artist}',
-      child: Container(
-        width: 156,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(28),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Artwork(song: song, size: 132, radius: 20),
-            const Spacer(),
-            Text(
-              song.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyles.body.copyWith(
-                color: ink,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              song.artist,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyles.caption.copyWith(
-                color: ink.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -256,30 +256,29 @@ class _EmptyLibrary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Palette.card,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('No encontramos música', style: TextStyles.title),
-          const SizedBox(height: 8),
-          const Text(
-            'Copia canciones a tu teléfono (por ejemplo a la carpeta Music) '
-            'o revisa en Ajustes › Carpetas si alguna quedó excluida.',
-            style: TextStyles.caption,
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: onRescan,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Volver a escanear'),
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: GlassSurface(
+        radius: 28,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('No encontramos música', style: TextStyles.title),
+            const SizedBox(height: 8),
+            const Text(
+              'Copia canciones a tu teléfono (por ejemplo a la carpeta Music) '
+              'o revisa en Ajustes › Carpetas si alguna quedó excluida.',
+              style: TextStyles.caption,
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onRescan,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Volver a escanear'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -223,11 +223,14 @@ class PulsoAudioHandler extends BaseAudioHandler with SeekHandler {
     _publishQueue();
   }
 
-  Future<void> addToQueue(Song song) async {
-    if (_songs.isEmpty) return playSongs([song]);
-    _songs.add(song);
-    _orderBeforeShuffle?.add(song.id);
-    await _player.addAudioSource(_source(song));
+  Future<void> addToQueue(Song song) => addAllToQueue([song]);
+
+  Future<void> addAllToQueue(List<Song> songs) async {
+    if (songs.isEmpty) return;
+    if (_songs.isEmpty) return playSongs(songs);
+    _songs.addAll(songs);
+    _orderBeforeShuffle?.addAll(songs.map((s) => s.id));
+    await _player.addAudioSources([for (final s in songs) _source(s)]);
     _publishQueue();
   }
 

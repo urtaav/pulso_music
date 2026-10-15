@@ -1,9 +1,25 @@
 enum VisualizerStyle {
   bars('Barras'),
-  pulse('Bocina'),
-  wave('Onda');
+  mirror('Espejo'),
+  dots('Puntos'),
+  lines('Líneas finas'),
+  wave('Onda'),
+  pulse('Bocina');
 
   const VisualizerStyle(this.label);
+
+  final String label;
+}
+
+/// Where the edge animation is drawn.
+enum VisualizerPosition {
+  bottom('Abajo'),
+  top('Arriba'),
+  both('Arriba y abajo'),
+  outline('Todo el borde'),
+  hidden('Oculta');
+
+  const VisualizerPosition(this.label);
 
   final String label;
 }
@@ -12,7 +28,7 @@ class Settings {
   const Settings({
     this.minDurationSeconds = 30,
     this.accent = 0xFFF2F25A,
-    this.visualizerEnabled = true,
+    this.visualizerPosition = VisualizerPosition.bottom,
     this.visualizerStyle = VisualizerStyle.bars,
     this.visualizerIntensity = 0.7,
     this.askedVisualizerPermission = false,
@@ -23,8 +39,10 @@ class Settings {
 
   final int minDurationSeconds;
   final int accent;
-  final bool visualizerEnabled;
+  final VisualizerPosition visualizerPosition;
   final VisualizerStyle visualizerStyle;
+
+  bool get visualizerEnabled => visualizerPosition != VisualizerPosition.hidden;
 
   /// 0.2..1
   final double visualizerIntensity;
@@ -40,7 +58,7 @@ class Settings {
   Settings copyWith({
     int? minDurationSeconds,
     int? accent,
-    bool? visualizerEnabled,
+    VisualizerPosition? visualizerPosition,
     VisualizerStyle? visualizerStyle,
     double? visualizerIntensity,
     bool? askedVisualizerPermission,
@@ -51,7 +69,7 @@ class Settings {
     return Settings(
       minDurationSeconds: minDurationSeconds ?? this.minDurationSeconds,
       accent: accent ?? this.accent,
-      visualizerEnabled: visualizerEnabled ?? this.visualizerEnabled,
+      visualizerPosition: visualizerPosition ?? this.visualizerPosition,
       visualizerStyle: visualizerStyle ?? this.visualizerStyle,
       visualizerIntensity: visualizerIntensity ?? this.visualizerIntensity,
       askedVisualizerPermission:
@@ -65,7 +83,7 @@ class Settings {
   Map<String, Object> toJson() => {
     'minDurationSeconds': minDurationSeconds,
     'accent': accent,
-    'visualizerEnabled': visualizerEnabled,
+    'visualizerPosition': visualizerPosition.name,
     'visualizerStyle': visualizerStyle.name,
     'visualizerIntensity': visualizerIntensity,
     'askedVisualizerPermission': askedVisualizerPermission,
@@ -89,7 +107,7 @@ class Settings {
     return Settings(
       minDurationSeconds: read('minDurationSeconds', d.minDurationSeconds),
       accent: read('accent', d.accent),
-      visualizerEnabled: read('visualizerEnabled', d.visualizerEnabled),
+      visualizerPosition: _readPosition(json) ?? d.visualizerPosition,
       visualizerStyle:
           VisualizerStyle.values.asNameMap()[json['visualizerStyle']] ??
           d.visualizerStyle,
@@ -105,6 +123,19 @@ class Settings {
       widgetAccent: read('widgetAccent', d.widgetAccent),
       widgetOpacity: readDouble('widgetOpacity', d.widgetOpacity).clamp(0.3, 1),
     );
+  }
+
+  // Ajustes guardados antes de existir la posición solo tenían un switch:
+  // encendido era el contorno completo y apagado, oculta.
+  static VisualizerPosition? _readPosition(Map<String, Object?> json) {
+    final saved = VisualizerPosition.values
+        .asNameMap()[json['visualizerPosition']];
+    if (saved != null) return saved;
+    return switch (json['visualizerEnabled']) {
+      true => VisualizerPosition.outline,
+      false => VisualizerPosition.hidden,
+      _ => null,
+    };
   }
 }
 

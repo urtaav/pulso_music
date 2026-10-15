@@ -23,32 +23,36 @@ class SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 28, 16, 12),
       child: Row(
         children: [
-          Flexible(
-            child: GestureDetector(
-              onTap: onTap,
-              behavior: HitTestBehavior.opaque,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      title,
-                      style: TextStyles.title.copyWith(fontSize: 22),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+          // Expanded (no Flexible + Spacer): el título usa todo el ancho
+          // libre y solo se corta si de verdad no cabe.
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: GestureDetector(
+                onTap: onTap,
+                behavior: HitTestBehavior.opaque,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: TextStyles.title.copyWith(fontSize: 22),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  if (onTap != null)
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Palette.grey,
-                      size: 28,
-                    ),
-                ],
+                    if (onTap != null)
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Palette.grey,
+                        size: 28,
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
-          const Spacer(),
           ?trailing,
         ],
       ),

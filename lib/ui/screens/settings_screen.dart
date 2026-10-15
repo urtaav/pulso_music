@@ -83,27 +83,26 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           const _Header('Animación de bordes'),
-          SwitchListTile(
-            secondary: const Icon(Icons.graphic_eq_rounded),
-            title: const Text('Animación con la música'),
-            subtitle: const Text('Barras en todo el borde de la pantalla'),
-            value: settings.visualizerEnabled,
-            onChanged: (v) =>
-                controller.update((s) => s.copyWith(visualizerEnabled: v)),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: VisualizerPreview(),
+          ),
+          _ChipGroup<VisualizerPosition>(
+            label: 'Posición',
+            values: VisualizerPosition.values,
+            selected: settings.visualizerPosition,
+            labelOf: (p) => p.label,
+            onSelected: (p) =>
+                controller.update((s) => s.copyWith(visualizerPosition: p)),
           ),
           if (settings.visualizerEnabled) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: SegmentedButton<VisualizerStyle>(
-                segments: [
-                  for (final style in VisualizerStyle.values)
-                    ButtonSegment(value: style, label: Text(style.label)),
-                ],
-                selected: {settings.visualizerStyle},
-                onSelectionChanged: (s) => controller.update(
-                  (old) => old.copyWith(visualizerStyle: s.first),
-                ),
-              ),
+            _ChipGroup<VisualizerStyle>(
+              label: 'Estilo',
+              values: VisualizerStyle.values,
+              selected: settings.visualizerStyle,
+              labelOf: (s) => s.label,
+              onSelected: (style) =>
+                  controller.update((s) => s.copyWith(visualizerStyle: style)),
             ),
             _SliderTile(
               title: 'Intensidad',
@@ -203,6 +202,62 @@ class _Header extends StatelessWidget {
           fontSize: 16,
           color: Theme.of(context).colorScheme.primary,
         ),
+      ),
+    );
+  }
+}
+
+/// Wrapping row of choice chips; better than a segmented button when the
+/// options don't fit in one line.
+class _ChipGroup<T> extends StatelessWidget {
+  const _ChipGroup({
+    required this.label,
+    required this.values,
+    required this.selected,
+    required this.labelOf,
+    required this.onSelected,
+  });
+
+  final String label;
+  final List<T> values;
+  final T selected;
+  final String Function(T) labelOf;
+  final ValueChanged<T> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyles.body),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final value in values)
+                ChoiceChip(
+                  label: Text(labelOf(value)),
+                  selected: value == selected,
+                  showCheckmark: false,
+                  onSelected: (_) => onSelected(value),
+                  backgroundColor: Glass.fill,
+                  selectedColor: accent,
+                  side: BorderSide.none,
+                  shape: const StadiumBorder(),
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: value == selected
+                        ? Palette.on(accent)
+                        : Palette.white,
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

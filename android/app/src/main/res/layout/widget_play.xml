@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_play_area"
+    android:layout_width="48dp"
+    android:layout_height="48dp"
+    android:contentDescription="@string/widget_play_pause">
+    <ImageView
+        android:id="@+id/widget_play_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:src="@drawable/widget_circle" />
+    <ImageView
+        android:id="@+id/widget_play"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_gravity="center"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_widget_play" />
+</FrameLayout>

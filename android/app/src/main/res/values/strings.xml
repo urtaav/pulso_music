@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Lo que suena ahora en pulso, con controles</string>
+    <string name="widget_art">Portada</string>
+    <string name="widget_play_pause">Reproducir o pausar</string>
+    <string name="widget_previous">Anterior</string>
+    <string name="widget_next">Siguiente</string>
+</resources>

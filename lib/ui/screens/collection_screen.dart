@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -94,22 +95,10 @@ void openPlaylist(BuildContext context, String playlistId) => _open(
   ),
 );
 
+// CupertinoPageRoute: entra desde la derecha con paralaje y se puede cerrar
+// deslizando desde el borde izquierdo, como en iOS.
 void _open(BuildContext context, Widget screen) {
-  Navigator.of(context).push(
-    PageRouteBuilder<void>(
-      pageBuilder: (_, _, _) => screen,
-      transitionsBuilder: (_, animation, _, child) => FadeTransition(
-        opacity: animation,
-        child: SlideTransition(
-          position: Tween(begin: const Offset(0.06, 0), end: Offset.zero)
-              .animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              ),
-          child: child,
-        ),
-      ),
-    ),
-  );
+  Navigator.of(context).push(CupertinoPageRoute<void>(builder: (_) => screen));
 }
 
 /// Album, artist, folder, favorites or playlist, in the iOS 26 Music style:

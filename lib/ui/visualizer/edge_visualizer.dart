@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -53,8 +54,8 @@ class _EdgeVisualizerOverlayState extends ConsumerState<EdgeVisualizerOverlay>
     super.dispose();
   }
 
-  void _onTick(Duration _) {
-    final settled = _levels.step();
+  void _onTick(Duration elapsed) {
+    final settled = _levels.step(elapsed);
     // Pausado y ya en reposo: no gastar batería dibujando nada.
     if (settled && _subscription == null) _ticker.stop();
   }
@@ -84,7 +85,10 @@ class _EdgeVisualizerOverlayState extends ConsumerState<EdgeVisualizerOverlay>
         },
       );
     }
-    if (!_ticker.isActive) _ticker.start();
+    if (!_ticker.isActive) {
+      _levels.resetClock();
+      _ticker.start();
+    }
   }
 
   @override
@@ -138,7 +142,7 @@ class VisualizerPreview extends ConsumerStatefulWidget {
 class _VisualizerPreviewState extends ConsumerState<VisualizerPreview>
     with SingleTickerProviderStateMixin {
   final _levels = VisualizerLevels(VisualizerSource.bandCount);
-  late final Ticker _ticker = createTicker((_) => _levels.step());
+  late final Ticker _ticker = createTicker(_levels.step);
   late final StreamSubscription<List<double>> _subscription;
 
   @override
@@ -206,17 +210,43 @@ class VisualizerLevels extends ChangeNotifier {
 
   void clearTarget() => target.fillRange(0, target.length, 0);
 
-  /// Returns true when everything is at rest near zero.
-  bool step() {
+  // Constantes de tiempo del suavizado: subir rápido y bajar lento se siente
+  // como un medidor real; bajar rápido es lo que se veía brusco.
+  static const _riseSeconds = 0.07;
+  static const _fallSeconds = 0.32;
+
+  Duration? _lastFrame;
+
+  /// Advances the smoothing to [now]; returns true when everything is at rest.
+  ///
+  /// Depende del tiempo real entre frames y no del número de frames, así se
+  /// ve igual a 60 o 120 Hz y no salta si se pierde un frame.
+  bool step(Duration now) {
+    final last = _lastFrame;
+    _lastFrame = now;
+    final dt = last == null
+        ? 1 / 60
+        : ((now - last).inMicroseconds / 1e6).clamp(0.0, 0.1);
+
+    final riseK = 1 - math.exp(-dt / _riseSeconds);
+    final fallK = 1 - math.exp(-dt / _fallSeconds);
     var settled = true;
     for (var i = 0; i < current.length; i++) {
-      final diff = target[i] - current[i];
-      current[i] += diff * (diff > 0 ? 0.45 : 0.12);
+      // Promedio con las bandas vecinas: el borde ondula en vez de tener
+      // barras sueltas que brincan solas.
+      final left = target[math.max(0, i - 1)];
+      final right = target[math.min(target.length - 1, i + 1)];
+      final goal = target[i] * 0.6 + (left + right) * 0.2;
+      final diff = goal - current[i];
+      current[i] += diff * (diff > 0 ? riseK : fallK);
       if (current[i] > 0.002 || target[i] > 0) settled = false;
     }
     notifyListeners();
     return settled;
   }
+
+  /// Restarts the clock so a pause doesn't count as one huge frame.
+  void resetClock() => _lastFrame = null;
 }
 
 class EdgePainter extends CustomPainter {

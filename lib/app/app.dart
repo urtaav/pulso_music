@@ -18,6 +18,7 @@ class PulsoApp extends ConsumerWidget {
       title: 'pulso',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(accent),
+      scrollBehavior: const _IosScrollBehavior(),
       locale: const Locale('es', 'MX'),
       supportedLocales: const [Locale('es', 'MX')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -31,4 +32,21 @@ class PulsoApp extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Rebote al llegar al final de una lista, como en iOS, en vez del
+/// estiramiento de Android.
+class _IosScrollBehavior extends MaterialScrollBehavior {
+  const _IosScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
 }

@@ -61,11 +61,26 @@ class BottomChrome extends ConsumerWidget {
     );
 
     return AnimatedSize(
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
+      duration: Motion.slow,
+      curve: Motion.sheet,
       alignment: Alignment.bottomCenter,
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 240),
+        duration: Motion.medium,
+        switchInCurve: Motion.sheet,
+        switchOutCurve: Curves.easeIn,
+        // Se encoge y se desvanece en vez de cambiar de golpe.
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween(begin: 0.94, end: 1.0).animate(animation),
+            alignment: Alignment.bottomCenter,
+            child: child,
+          ),
+        ),
+        layoutBuilder: (current, previous) => Stack(
+          alignment: Alignment.bottomCenter,
+          children: [...previous, ?current],
+        ),
         child: compact
             ? Row(
                 key: const ValueKey('compact'),

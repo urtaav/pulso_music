@@ -38,10 +38,11 @@ class _PressableState extends State<Pressable> {
         onTapCancel: () => _set(false),
         onTap: widget.onTap,
         onLongPress: widget.onLongPress,
+        // Se hunde rápido y regresa con un rebote suave, como en iOS.
         child: AnimatedScale(
-          scale: _pressed ? 0.95 : 1,
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
+          scale: _pressed ? 0.96 : 1,
+          duration: Duration(milliseconds: _pressed ? 110 : 420),
+          curve: _pressed ? Curves.easeOut : Curves.easeOutBack,
           child: widget.child,
         ),
       ),

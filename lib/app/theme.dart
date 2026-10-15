@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 abstract final class Palette {
@@ -42,6 +43,16 @@ abstract final class Glass {
   static const fillStrong = Color(0x2EFFFFFF);
   static const border = Color(0x2EFFFFFF);
   static const highlight = Color(0x24FFFFFF);
+}
+
+/// Curvas tipo iOS: arrancan rápido y frenan largo, sin rebotes bruscos.
+abstract final class Motion {
+  /// Hojas y pantallas que entran (curva de los sheets de iOS).
+  static const sheet = Cubic(0.32, 0.72, 0, 1);
+  static const standard = Curves.easeOutCubic;
+  static const quick = Duration(milliseconds: 220);
+  static const medium = Duration(milliseconds: 380);
+  static const slow = Duration(milliseconds: 520);
 }
 
 abstract final class TextStyles {
@@ -125,6 +136,10 @@ ThemeData buildTheme(Color accent) {
     fontFamily: 'Inter',
     scaffoldBackgroundColor: Palette.background,
     splashFactory: InkSparkle.splashFactory,
+    // Transición de iOS (paralaje + deslizar desde el borde para regresar).
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {TargetPlatform.android: CupertinoPageTransitionsBuilder()},
+    ),
     dividerColor: Palette.separator,
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,

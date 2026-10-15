@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'listening_stats.dart';
 import 'settings.dart';
 
 /// Everything the user creates or chooses, stored as JSON in
@@ -18,6 +19,8 @@ class UserStore {
   static const _folders = 'folder_overrides';
   static const _recents = 'recently_played';
   static const _session = 'session';
+  static const _shuffle = 'shuffle_history';
+  static const _stats = 'listening_stats';
 
   static const maxRecents = 30;
 
@@ -84,6 +87,19 @@ class UserStore {
 
   Future<void> saveSession(PlaybackSession session) =>
       _write(_session, session.toJson());
+
+  Set<int> loadShuffleHistory() {
+    final json = _read(_shuffle);
+    return json is List ? json.whereType<int>().toSet() : {};
+  }
+
+  Future<void> saveShuffleHistory(Set<int> played) =>
+      _write(_shuffle, played.toList());
+
+  ListeningStats loadStats() => ListeningStats.fromJson(_read(_stats));
+
+  Future<void> saveStats(ListeningStats stats) =>
+      _write(_stats, stats.toJson());
 }
 
 /// Moves [id] to the front, without duplicates, capped at [UserStore.maxRecents].

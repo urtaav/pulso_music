@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 
 import '../data/library.dart';
 import '../data/settings.dart';
+import '../data/shuffle.dart';
 import '../data/song.dart';
 
 class SleepTimerState {
@@ -31,12 +32,15 @@ class SleepTimerState {
 /// reordena esa lista en lugar de usar el shuffle interno de just_audio, así la
 /// cola que ve el usuario es exactamente lo que va a sonar y se puede editar.
 class PulsoAudioHandler extends BaseAudioHandler with SeekHandler {
-  PulsoAudioHandler({required this.saveSession}) {
+  PulsoAudioHandler({required this.saveSession, required this.shuffleHistory}) {
     _init();
   }
 
   /// Persists the session (last song, position, queue).
   final Future<void> Function(PlaybackSession session) saveSession;
+
+  /// What already played in this cycle, so shuffle avoids repeats.
+  final ShuffleHistory shuffleHistory;
 
   /// Called when play is pressed with nothing queued (notification, widget).
   Future<void> Function()? onEmptyQueuePlay;
@@ -116,7 +120,7 @@ class PulsoAudioHandler extends BaseAudioHandler with SeekHandler {
     var list = [...songs];
     var index = startIndex.clamp(0, list.length - 1);
     if (shuffle) {
-      list.shuffle(_random);
+      list = _shuffled(list);
       index = 0;
     }
     _shuffle = shuffle;
@@ -276,8 +280,7 @@ class PulsoAudioHandler extends BaseAudioHandler with SeekHandler {
     if (enable) {
       _orderBeforeShuffle = [for (final s in _songs) s.id];
       final rest = [..._songs]..removeWhere((s) => identical(s, current));
-      rest.shuffle(_random);
-      target = [?current, ...rest];
+      target = [?current, ..._shuffled(rest)];
     } else {
       target = _originalOrder();
       _orderBeforeShuffle = null;
@@ -301,6 +304,16 @@ class PulsoAudioHandler extends BaseAudioHandler with SeekHandler {
       if (i != -1) result.add(pool.removeAt(i));
     }
     return result..addAll(pool);
+  }
+
+  /// Shuffle that plays unheard songs first and keeps artists apart; when the
+  /// whole list already played, a new cycle starts for those songs only.
+  List<Song> _shuffled(List<Song> songs) {
+    final order = shuffleWithoutRepeats(songs, shuffleHistory.played, _random);
+    if (order.startedNewCycle) {
+      shuffleHistory.forget(songs.map((s) => s.id));
+    }
+    return order.songs;
   }
 
   /// Reorders with moves so the current song keeps playing without a gap.
@@ -365,6 +378,7 @@ class PulsoAudioHandler extends BaseAudioHandler with SeekHandler {
     final song = _songs[index];
     mediaItem.add(_toMediaItem(song));
     if (index != _lastStartedIndex && !_restoring) {
+      shuffleHistory.markPlayed(song.id);
       _songStarted.add(song);
     }
     _lastStartedIndex = index;

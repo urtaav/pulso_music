@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
 import 'audio/audio_handler.dart';
+import 'audio/listening_recorder.dart';
+import 'data/shuffle.dart';
 import 'data/user_store.dart';
 import 'state/providers.dart';
 import 'ui/shell/widget_actions.dart';
@@ -27,7 +29,13 @@ Future<void> main() async {
 
   final store = UserStore(await SharedPreferences.getInstance());
   final handler = await AudioService.init(
-    builder: () => PulsoAudioHandler(saveSession: store.saveSession),
+    builder: () => PulsoAudioHandler(
+      saveSession: store.saveSession,
+      shuffleHistory: ShuffleHistory(
+        played: store.loadShuffleHistory(),
+        save: store.saveShuffleHistory,
+      ),
+    ),
     config: const AudioServiceConfig(
       androidNotificationChannelId: 'com.example.pulso_music.playback',
       androidNotificationChannelName: 'Reproducción',
@@ -35,6 +43,13 @@ Future<void> main() async {
       androidStopForegroundOnPause: true,
     ),
   );
+
+  final recorder =
+      ListeningRecorder(initial: store.loadStats(), save: store.saveStats)
+        ..attach(
+          playbackState: handler.playbackState,
+          songStarted: handler.songStarted,
+        );
 
   // Botones del widget de inicio mientras la app está viva.
   const MethodChannel('pulso/widget').setMethodCallHandler((call) async {
@@ -48,6 +63,7 @@ Future<void> main() async {
       overrides: [
         userStoreProvider.overrideWithValue(store),
         audioHandlerProvider.overrideWithValue(handler),
+        listeningRecorderProvider.overrideWithValue(recorder),
       ],
       child: const PulsoApp(),
     ),

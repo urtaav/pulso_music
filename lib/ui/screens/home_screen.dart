@@ -12,6 +12,7 @@ import '../common/glass.dart';
 import '../common/pressable.dart';
 import '../common/sections.dart';
 import '../common/song_tile.dart';
+import '../common/week_chart.dart';
 import 'collection_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -27,6 +28,8 @@ class HomeScreen extends ConsumerWidget {
     final handler = ref.read(audioHandlerProvider);
     final recentlyAdded = library.recentlyAdded.take(6).toList();
     final albumsForYou = _albumsOfTheDay(library);
+    final topSongs = ref.watch(topSongsProvider);
+    final week = ref.watch(weekSummaryProvider);
     final loading = libraryState.isLoading && library.songs.isEmpty;
 
     return Stack(
@@ -129,6 +132,29 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+                if (topSongs.isNotEmpty) ...[
+                  const SectionHeader('Tus más escuchadas'),
+                  _Carousel(
+                    itemCount: topSongs.length,
+                    itemBuilder: (i) => CoverCard(
+                      song: topSongs[i],
+                      title: topSongs[i].title,
+                      subtitle: topSongs[i].artist,
+                      onTap: () => handler.playSongs(topSongs, startIndex: i),
+                      onLongPress: () =>
+                          showSongActions(context, ref, topSongs[i]),
+                    ),
+                  ),
+                ],
+                const SectionHeader('Tu semana'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GlassSurface(
+                    radius: 28,
+                    padding: const EdgeInsets.all(20),
+                    child: WeekChart(week: week),
+                  ),
+                ),
                 if (albumsForYou.isNotEmpty) ...[
                   const SectionHeader('Álbumes para hoy'),
                   _Carousel(

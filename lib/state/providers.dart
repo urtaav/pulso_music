@@ -2,7 +2,9 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../audio/audio_handler.dart';
+import '../audio/listening_recorder.dart';
 import '../data/library.dart';
+import '../data/listening_stats.dart';
 import '../data/media_store.dart';
 import '../data/settings.dart';
 import '../data/song.dart';
@@ -206,4 +208,31 @@ final currentSongProvider = Provider<Song?>((ref) {
   if (id is! int) return null;
   return ref.watch(libraryValueProvider).byId(id) ??
       ref.read(audioHandlerProvider).currentSong;
+});
+
+// ---- Estadísticas de escucha ----
+
+final listeningRecorderProvider = Provider<ListeningRecorder>(
+  (ref) => throw UnimplementedError('override in main'),
+);
+
+final listeningStatsProvider = StreamProvider<ListeningStats>((ref) async* {
+  final recorder = ref.watch(listeningRecorderProvider);
+  yield recorder.stats;
+  yield* recorder.changes;
+});
+
+final weekSummaryProvider = Provider<WeekSummary>((ref) {
+  final stats =
+      ref.watch(listeningStatsProvider).value ??
+      ref.read(listeningRecorderProvider).stats;
+  return summarizeWeek(stats, DateTime.now());
+});
+
+/// Your most played songs that are still in the library.
+final topSongsProvider = Provider<List<Song>>((ref) {
+  final stats =
+      ref.watch(listeningStatsProvider).value ??
+      ref.read(listeningRecorderProvider).stats;
+  return ref.watch(libraryValueProvider).resolve(stats.topSongs(20));
 });

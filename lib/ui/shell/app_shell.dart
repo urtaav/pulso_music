@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -38,6 +40,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     (_) => GlobalKey<NavigatorState>(),
   );
   final _widgetSync = HomeWidgetSync();
+  Timer? _widgetTimer;
   late final AppLifecycleListener _lifecycle;
   int _tab = 0;
   bool _collapsed = false;
@@ -63,11 +66,18 @@ class _AppShellState extends ConsumerState<AppShell> {
     });
     ref.listenManual(mediaItemProvider, (_, _) => _pushWidget());
     ref.listenManual(settingsProvider, (_, _) => _pushWidget());
+    ref.listenManual(favoritesProvider, (_, _) => _pushWidget());
+    ref.listenManual(weekSummaryProvider, (_, _) => _pushWidget());
+    // El progreso del widget no avanza solo: se refresca cada tanto.
+    _widgetTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (ref.read(isPlayingProvider)) _pushWidget();
+    });
   }
 
   @override
   void dispose() {
     _lifecycle.dispose();
+    _widgetTimer?.cancel();
     super.dispose();
   }
 
@@ -82,7 +92,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
     // Botón del widget tocado con la app cerrada.
     final action = await ref.read(mediaStoreProvider).consumeLaunchAction();
-    if (action != null) await runWidgetAction(handler, action);
+    if (action != null && mounted) {
+      await runWidgetAction(ProviderScope.containerOf(context), action);
+    }
     await _pushWidget();
   }
 
@@ -95,11 +107,18 @@ class _AppShellState extends ConsumerState<AppShell> {
     ref.invalidate(micPermissionProvider);
   }
 
-  Future<void> _pushWidget() => _widgetSync.push(
-    item: ref.read(mediaItemProvider).value,
-    playing: ref.read(isPlayingProvider),
-    settings: ref.read(settingsProvider),
-  );
+  Future<void> _pushWidget() {
+    final handler = ref.read(audioHandlerProvider);
+    final song = handler.currentSong;
+    return _widgetSync.push(
+      item: ref.read(mediaItemProvider).value,
+      playing: ref.read(isPlayingProvider),
+      position: handler.position,
+      isFavorite: song != null && ref.read(favoritesProvider).contains(song.id),
+      settings: ref.read(settingsProvider),
+      week: ref.read(weekSummaryProvider),
+    );
+  }
 
   void _maybeAskVisualizerPermission() {
     final settings = ref.read(settingsProvider);

@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="widget_player_label">Reproductor</string>
+    <string name="widget_cover_label">Portada</string>
+    <string name="widget_stats_label">Tu semana</string>
     <string name="widget_description">Lo que suena ahora en pulso, con controles</string>
+    <string name="widget_cover_description">La portada completa con progreso y controles</string>
+    <string name="widget_stats_description">Cuánta música escuchas cada día de la semana</string>
+    <string name="widget_stats_title">TU SEMANA</string>
+    <string name="widget_stats_chart">Minutos escuchados por día</string>
     <string name="widget_art">Portada</string>
     <string name="widget_play_pause">Reproducir o pausar</string>
     <string name="widget_previous">Anterior</string>
     <string name="widget_next">Siguiente</string>
+    <string name="widget_favorite">Favorito</string>
 </resources>

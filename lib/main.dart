@@ -51,21 +51,24 @@ Future<void> main() async {
           songStarted: handler.songStarted,
         );
 
+  // Contenedor propio para que los botones del widget (que llegan por fuera
+  // de la UI) usen los mismos providers que la app.
+  final container = ProviderContainer(
+    overrides: [
+      userStoreProvider.overrideWithValue(store),
+      audioHandlerProvider.overrideWithValue(handler),
+      listeningRecorderProvider.overrideWithValue(recorder),
+    ],
+  );
+
   // Botones del widget de inicio mientras la app está viva.
   const MethodChannel('pulso/widget').setMethodCallHandler((call) async {
     if (call.method == 'action' && call.arguments is String) {
-      await runWidgetAction(handler, call.arguments as String);
+      await runWidgetAction(container, call.arguments as String);
     }
   });
 
   runApp(
-    ProviderScope(
-      overrides: [
-        userStoreProvider.overrideWithValue(store),
-        audioHandlerProvider.overrideWithValue(handler),
-        listeningRecorderProvider.overrideWithValue(recorder),
-      ],
-      child: const PulsoApp(),
-    ),
+    UncontrolledProviderScope(container: container, child: const PulsoApp()),
   );
 }

@@ -36,5 +36,6 @@ class WidgetActionReceiver : BroadcastReceiver() {
         const val PLAY_PAUSE = "playPause"
         const val NEXT = "next"
         const val PREVIOUS = "previous"
+        const val FAVORITE = "favorite"
     }
 }

@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../state/providers.dart';
+import '../common/glass.dart';
 
 Future<void> showSleepTimerSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showGlassSheet<void>(
     context: context,
     builder: (_) => const SafeArea(child: _SleepTimerOptions()),
   );

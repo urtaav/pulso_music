@@ -260,7 +260,7 @@ class CollectionScreen extends ConsumerWidget {
   ) async {
     final controller = ref.read(playlistsProvider.notifier);
     final playlist = ref.read(playlistsProvider).firstWhere((p) => p.id == id);
-    final action = await showModalBottomSheet<String>(
+    final action = await showGlassSheet<String>(
       context: context,
       builder: (sheetContext) => SafeArea(
         child: Column(
@@ -344,18 +344,19 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
+    final screen = MediaQuery.sizeOf(context);
+    // Portada a todo lo ancho y más alta que cuadrada, desde debajo de la
+    // barra de estado, como en Apple Music de iOS 26.
+    final height = (screen.height * 0.6).clamp(
+      screen.width + 40,
+      screen.width * 1.5,
+    );
     return SizedBox(
-      height: width + 40,
+      height: height,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Artwork(song: song, size: width, radius: 0, highRes: true),
-          ),
+          Artwork(song: song, radius: 0, highRes: true, fill: true),
           // La portada se funde con el fondo, como en Apple Music.
           DecoratedBox(
             decoration: BoxDecoration(

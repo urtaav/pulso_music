@@ -14,9 +14,8 @@ import es.antonborri.home_widget.HomeWidgetProvider
 
 /**
  * Widget "Portada": la carátula a sangre completa con un degradado oscuro,
- * artista, título, ♡, barra de progreso con tiempos y la cápsula de vidrio
- * "Pausa". El tiempo transcurrido usa un Chronometer: avanza solo sin que la
- * app tenga que actualizar el widget cada segundo.
+ * título, ♡, barra de progreso y la cápsula de vidrio con play/pausa.
+ * Solo el título: con artista y tiempos el texto se apachurraba.
  */
 class CoverWidgetProvider : HomeWidgetProvider() {
 
@@ -93,7 +92,6 @@ class CoverWidgetProvider : HomeWidgetProvider() {
         }
 
         views.setTextViewText(R.id.cover_title, state.title)
-        views.setTextViewText(R.id.cover_artist, state.artist)
         views.setImageViewResource(
             R.id.cover_play_icon,
             if (state.playing) R.drawable.ic_widget_pause else R.drawable.ic_widget_play,
@@ -105,7 +103,6 @@ class CoverWidgetProvider : HomeWidgetProvider() {
         views.setOnClickPendingIntent(R.id.cover_root, WidgetIntents.openApp(context))
 
         if (layout == R.layout.widget_cover) {
-            views.setTextViewText(R.id.cover_play_label, if (state.playing) "Pausa" else "Reproducir")
             views.setImageViewResource(
                 R.id.cover_heart,
                 if (state.favorite) R.drawable.ic_widget_heart_filled else R.drawable.ic_widget_heart,
@@ -124,19 +121,9 @@ class CoverWidgetProvider : HomeWidgetProvider() {
             )
 
             val hasTime = state.durationMs > 0
-            views.setViewVisibility(R.id.cover_progress_row, if (hasTime) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.cover_progress, if (hasTime) View.VISIBLE else View.INVISIBLE)
             if (hasTime) {
                 views.setProgressBar(R.id.cover_progress, 1000, state.progressPermille(), false)
-                views.setChronometer(
-                    R.id.cover_elapsed,
-                    state.chronometerBase(),
-                    null,
-                    state.playing,
-                )
-                views.setTextViewText(
-                    R.id.cover_duration,
-                    WidgetState.formatTime(state.durationMs),
-                )
             }
         }
         return views

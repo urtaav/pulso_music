@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../state/providers.dart';
-import '../common/adaptive_background.dart';
+import '../common/artwork_palette.dart';
 import '../common/artwork.dart';
 import '../common/glass.dart';
 import '../common/play_pause_button.dart';
@@ -155,11 +155,109 @@ class _PlayerBody extends ConsumerWidget {
     final shuffle = state?.shuffleMode == AudioServiceShuffleMode.all;
     final repeat = state?.repeatMode ?? AudioServiceRepeatMode.none;
 
+    final palette = ref.watch(stablePaletteProvider);
+    final screen = MediaQuery.sizeOf(context);
+    // La portada ocupa todo el ancho y baja más allá de cuadrada; los
+    // controles quedan encima del degradado, como Apple Music en iOS 26.
+    final artHeight = math.max(screen.width, screen.height * 0.62);
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Fondo teñido con la portada, como Apple Music.
-        AdaptiveBackground(song: song),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 600),
+          color: palette.background,
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: artHeight,
+          child: AnimatedSwitcher(
+            duration: Motion.slow,
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            // Al cambiar de canción la portada nueva entra deslizándose un
+            // poco desde el lado del gesto mientras se funde.
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position:
+                    Tween(
+                      begin: Offset(0.08 * swipeDirection, 0),
+                      end: Offset.zero,
+                    ).animate(
+                      CurvedAnimation(parent: animation, curve: Motion.sheet),
+                    ),
+                child: child,
+              ),
+            ),
+            child: Artwork(
+              key: ValueKey(song?.id),
+              song: song,
+              radius: 0,
+              highRes: true,
+              fill: true,
+            ),
+          ),
+        ),
+        // En pausa la portada se apaga un poco en vez de encogerse.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: artHeight,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: playing ? 0 : 0.3,
+              duration: Motion.slow,
+              curve: Motion.standard,
+              child: const ColoredBox(color: Colors.black),
+            ),
+          ),
+        ),
+        // Degradado: la portada se funde con el color de la canción.
+        Positioned(
+          left: 0,
+          right: 0,
+          top: artHeight * 0.4,
+          height: artHeight * 0.6 + 1,
+          child: IgnorePointer(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 600),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    palette.background.withValues(alpha: 0),
+                    palette.background.withValues(alpha: 0.75),
+                    palette.background,
+                  ],
+                  stops: const [0, 0.55, 1],
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Sombra suave arriba para que los botones se lean sobre portadas claras.
+        const Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 140,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x59000000), Color(0x00000000)],
+                ),
+              ),
+            ),
+          ),
+        ),
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -174,13 +272,7 @@ class _PlayerBody extends ConsumerWidget {
                       iconSize: 28,
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Expanded(
-                      child: Text(
-                        'Reproduciendo',
-                        textAlign: TextAlign.center,
-                        style: TextStyles.overline,
-                      ),
-                    ),
+                    const Spacer(),
                     GlassIconButton(
                       tooltip: 'Temporizador',
                       icon: sleep?.isActive == true
@@ -196,67 +288,14 @@ class _PlayerBody extends ConsumerWidget {
                     ),
                   ],
                 ),
+                // Espacio libre sobre la portada; también sirve para el gesto
+                // de cambiar de canción.
                 Expanded(
                   child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
                     onHorizontalDragEnd: onHorizontalEnd,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final size = constraints.biggest.shortestSide;
-                        return Center(
-                          // En pausa la portada se hace un poco más chica,
-                          // como en Apple Music.
-                          child: AnimatedScale(
-                            scale: playing ? 1 : 0.82,
-                            duration: Motion.slow,
-                            curve: playing
-                                ? Curves.easeOutBack
-                                : Curves.easeOutCubic,
-                            child: AnimatedSwitcher(
-                              duration: Motion.medium,
-                              switchInCurve: Motion.standard,
-                              switchOutCurve: Motion.standard,
-                              transitionBuilder: (child, animation) {
-                                final slide = Tween(
-                                  begin: Offset(0.18 * swipeDirection, 0),
-                                  end: Offset.zero,
-                                ).animate(animation);
-                                return FadeTransition(
-                                  opacity: animation,
-                                  child: SlideTransition(
-                                    position: slide,
-                                    child: child,
-                                  ),
-                                );
-                              },
-                              child: DecoratedBox(
-                                key: ValueKey(song?.id),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(32),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.45,
-                                      ),
-                                      blurRadius: 40,
-                                      offset: const Offset(0, 20),
-                                    ),
-                                  ],
-                                ),
-                                child: Artwork(
-                                  song: song,
-                                  size: size,
-                                  radius: 32,
-                                  highRes: true,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
                   ),
                 ),
-                const SizedBox(height: 24),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

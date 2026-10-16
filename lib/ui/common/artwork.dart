@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -19,6 +18,9 @@ class ArtworkCache {
   final MediaStoreApi _api;
   // Map literals keep insertion order: the first key is the least recent.
   final _entries = <String, Future<Uint8List?>>{};
+  // Lo que ya llegó, para pintarlo en el mismo frame: con solo el Future,
+  // FutureBuilder dibuja un frame vacío y la portada parpadea al hacer scroll.
+  final _resolved = <String, Uint8List?>{};
 
   Future<Uint8List?> get(int songId, int size) {
     final key = '$songId@$size';
@@ -27,10 +29,27 @@ class ArtworkCache {
       _entries[key] = cached;
       return cached;
     }
-    final future = _api.artwork(songId, size: size).catchError((_) => null);
+    final future = _api
+        .artwork(songId, size: size)
+        .catchError((_) => null)
+        .then((bytes) {
+          if (_entries.containsKey(key)) _resolved[key] = bytes;
+          return bytes;
+        });
     _entries[key] = future;
-    if (_entries.length > _capacity) _entries.remove(_entries.keys.first);
+    if (_entries.length > _capacity) {
+      final oldest = _entries.keys.first;
+      _entries.remove(oldest);
+      _resolved.remove(oldest);
+    }
     return future;
+  }
+
+  /// `(true, bytes)` once loaded (bytes is null when the song has no cover),
+  /// `(false, null)` while still unknown.
+  (bool, Uint8List?) peek(int songId, int size) {
+    final key = '$songId@$size';
+    return _resolved.containsKey(key) ? (true, _resolved[key]) : (false, null);
   }
 }
 
@@ -38,7 +57,7 @@ final artworkCacheProvider = Provider(
   (ref) => ArtworkCache(ref.watch(mediaStoreProvider)),
 );
 
-/// Song cover, or an abstract generated cover when the file has none.
+/// Song cover, or an elegant generated cover when the file has none.
 class Artwork extends ConsumerWidget {
   const Artwork({
     super.key,
@@ -46,6 +65,7 @@ class Artwork extends ConsumerWidget {
     this.size = 56,
     this.radius = 16,
     this.highRes = false,
+    this.fill = false,
   });
 
   final Song? song;
@@ -53,110 +73,178 @@ class Artwork extends ConsumerWidget {
   final double radius;
   final bool highRes;
 
+  /// Ignores [size] and fills the parent (full-screen hero images).
+  final bool fill;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final song = this.song;
-    final accent = Theme.of(context).colorScheme.primary;
-    final fallback = GeneratedCover(seed: song?.id ?? 0, accent: accent);
-    Widget child = fallback;
+    final placeholder = GeneratedCover(song: song);
+    Widget child = placeholder;
     if (song != null) {
-      child = FutureBuilder<Uint8List?>(
-        future: ref
-            .read(artworkCacheProvider)
-            .get(song.id, highRes ? 768 : 256),
-        builder: (context, snapshot) {
-          final bytes = snapshot.data;
-          if (bytes == null) return fallback;
-          return Image.memory(
-            bytes,
-            fit: BoxFit.cover,
-            gaplessPlayback: true,
-            filterQuality: FilterQuality.medium,
-          );
-        },
-      );
+      final cache = ref.read(artworkCacheProvider);
+      final resolution = highRes ? 768 : 256;
+      final (known, bytes) = cache.peek(song.id, resolution);
+      // Decodificar al tamaño en pantalla: menos trabajo por frame al hacer scroll.
+      final decodeWidth = fill
+          ? null
+          : (size * MediaQuery.devicePixelRatioOf(context)).round();
+      if (known) {
+        child = bytes == null
+            ? placeholder
+            : _CoverImage(bytes: bytes, decodeWidth: decodeWidth);
+      } else {
+        child = FutureBuilder<Uint8List?>(
+          future: cache.get(song.id, resolution),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const ColoredBox(color: Palette.card);
+            }
+            final bytes = snapshot.data;
+            return _FadeIn(
+              child: bytes == null
+                  ? placeholder
+                  : _CoverImage(bytes: bytes, decodeWidth: decodeWidth),
+            );
+          },
+        );
+      }
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: SizedBox.square(dimension: size, child: child),
-    );
+    final box = fill
+        ? SizedBox.expand(child: child)
+        : SizedBox.square(dimension: size, child: child);
+    if (radius == 0) return box;
+    return ClipRRect(borderRadius: BorderRadius.circular(radius), child: box);
   }
 }
 
-/// Deterministic abstract art: same song, same shapes.
-class GeneratedCover extends StatelessWidget {
-  const GeneratedCover({super.key, required this.seed, required this.accent});
+class _CoverImage extends StatelessWidget {
+  const _CoverImage({required this.bytes, required this.decodeWidth});
 
-  final int seed;
-  final Color accent;
+  final Uint8List bytes;
+  final int? decodeWidth;
 
   @override
   Widget build(BuildContext context) {
-    final colors = [accent, Palette.coral, Palette.neon, Palette.white];
-    final background = colors[seed.abs() % colors.length];
-    return CustomPaint(
-      painter: _CoverPainter(seed: seed, background: background),
-      child: const SizedBox.expand(),
+    return Image.memory(
+      bytes,
+      fit: BoxFit.cover,
+      gaplessPlayback: true,
+      cacheWidth: decodeWidth,
+      filterQuality: FilterQuality.medium,
+      // La primera decodificación es asíncrona: aparece con un fundido corto
+      // en vez de un salto. Si ya estaba decodificada, sale directo.
+      frameBuilder: (context, child, frame, sync) {
+        if (sync) return child;
+        return AnimatedOpacity(
+          opacity: frame == null ? 0 : 1,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          child: child,
+        );
+      },
+      errorBuilder: (_, _, _) => const ColoredBox(color: Palette.card),
     );
   }
 }
 
-class _CoverPainter extends CustomPainter {
-  _CoverPainter({required this.seed, required this.background});
+class _FadeIn extends StatelessWidget {
+  const _FadeIn({required this.child});
 
-  final int seed;
-  final Color background;
+  final Widget child;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final random = Random(seed);
-    final ink = Palette.on(background);
-    canvas.drawRect(Offset.zero & size, Paint()..color = background);
-
-    final s = size.shortestSide;
-    final paint = Paint()
-      ..color = ink.withValues(alpha: 0.9)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = s * 0.05
-      ..strokeCap = StrokeCap.round;
-
-    switch (random.nextInt(3)) {
-      case 0: // círculos concéntricos
-        final center = Offset(
-          size.width * (0.3 + random.nextDouble() * 0.4),
-          size.height * (0.3 + random.nextDouble() * 0.4),
-        );
-        for (var i = 1; i <= 3; i++) {
-          canvas.drawCircle(center, s * 0.12 * i, paint);
-        }
-      case 1: // onda
-        final path = Path()..moveTo(0, size.height * 0.5);
-        final waves = 2 + random.nextInt(3);
-        for (var x = 0.0; x <= size.width; x += 2) {
-          path.lineTo(
-            x,
-            size.height * 0.5 +
-                sin(x / size.width * pi * 2 * waves) * size.height * 0.18,
-          );
-        }
-        canvas.drawPath(path, paint);
-      default: // arcos
-        for (var i = 0; i < 3; i++) {
-          final rect = Rect.fromCircle(
-            center: Offset(size.width * random.nextDouble(), size.height),
-            radius: s * (0.3 + i * 0.2),
-          );
-          canvas.drawArc(rect, pi, pi, false, paint);
-        }
-    }
-    canvas.drawCircle(
-      Offset(size.width * 0.78, size.height * 0.22),
-      s * 0.06,
-      Paint()..color = ink,
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      builder: (context, t, child) => Opacity(opacity: t, child: child),
+      child: child,
     );
+  }
+}
+
+/// Cover for songs without artwork: a deep two-tone gradient with a soft
+/// glow and the album's initial. Same album, same cover.
+class GeneratedCover extends StatelessWidget {
+  const GeneratedCover({super.key, required this.song});
+
+  final Song? song;
+
+  // Pares oscuros y saturados: se ven bien junto a portadas reales.
+  static const _gradients = [
+    [Color(0xFF3A1C71), Color(0xFFD76D77)],
+    [Color(0xFF0F2027), Color(0xFF2C5364)],
+    [Color(0xFF1D2B64), Color(0xFF8E54E9)],
+    [Color(0xFF42275A), Color(0xFF734B6D)],
+    [Color(0xFF134E5E), Color(0xFF71B280)],
+    [Color(0xFF2B1B17), Color(0xFFC0623C)],
+    [Color(0xFF16222A), Color(0xFF3A6073)],
+    [Color(0xFF41295A), Color(0xFF2F0743)],
+    [Color(0xFF1F1C2C), Color(0xFF928DAB)],
+    [Color(0xFF3D0C11), Color(0xFFB2333F)],
+  ];
+
+  /// Gradient used for [song]; also tints the background when it plays.
+  static List<Color> colorsFor(Song? song) =>
+      _gradients[_key(song).hashCode.abs() % _gradients.length];
+
+  static String _key(Song? song) {
+    if (song == null) return '';
+    return song.album == 'Sin álbum' ? song.title : song.album;
   }
 
   @override
-  bool shouldRepaint(_CoverPainter old) =>
-      old.seed != seed || old.background != background;
+  Widget build(BuildContext context) {
+    final key = _key(song).trim();
+    final initial = key.isEmpty
+        ? null
+        : String.fromCharCode(key.runes.first).toUpperCase();
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colorsFor(song),
+        ),
+      ),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(-0.6, -0.7),
+            radius: 1.1,
+            colors: [Color(0x38FFFFFF), Color(0x00FFFFFF)],
+          ),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final side = constraints.biggest.shortestSide;
+            return Center(
+              child: initial == null
+                  ? Icon(
+                      Icons.music_note_rounded,
+                      size: side * 0.36,
+                      color: Palette.white.withValues(alpha: 0.75),
+                    )
+                  : Text(
+                      initial,
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyles.display.copyWith(
+                        fontSize: side * 0.46,
+                        height: 1,
+                        letterSpacing: -side * 0.02,
+                        color: Palette.white.withValues(alpha: 0.85),
+                        shadows: const [
+                          Shadow(color: Color(0x40000000), blurRadius: 24),
+                        ],
+                      ),
+                    ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }

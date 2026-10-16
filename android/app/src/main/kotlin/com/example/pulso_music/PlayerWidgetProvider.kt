@@ -105,9 +105,12 @@ class PlayerWidgetProvider : HomeWidgetProvider() {
 
         if (layout != R.layout.widget_small) {
             views.setTextViewText(R.id.widget_title, state.title)
-            views.setTextViewText(R.id.widget_artist, state.artist)
             views.setTextColor(R.id.widget_title, state.foreground)
-            views.setTextColor(R.id.widget_artist, state.secondary)
+            // El artista solo cabe en el diseño alto; en el compacto se apachurra.
+            if (layout == R.layout.widget_large) {
+                views.setTextViewText(R.id.widget_artist, state.artist)
+                views.setTextColor(R.id.widget_artist, state.secondary)
+            }
             views.setInt(R.id.widget_prev, "setColorFilter", state.foreground)
             views.setInt(R.id.widget_next, "setColorFilter", state.foreground)
             views.setOnClickPendingIntent(

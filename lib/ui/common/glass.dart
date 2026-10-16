@@ -37,7 +37,9 @@ class GlassSurface extends StatelessWidget {
 
     return ClipPath(
       clipper: ShapeBorderClipper(shape: shape),
-      child: BackdropFilter(
+      // grouped: dentro de un BackdropGroup comparte la captura del fondo con
+      // las demás tarjetas; sin grupo se comporta como un BackdropFilter normal.
+      child: BackdropFilter.grouped(
         filter: ImageFilter.blur(sigmaX: Glass.blur, sigmaY: Glass.blur),
         child: DecoratedBox(
           decoration: ShapeDecoration(
@@ -113,6 +115,59 @@ class GlassIconButton extends StatelessWidget {
               child: button,
             )
           : GlassSurface(circle: true, child: button),
+    );
+  }
+}
+
+/// Bottom sheet made of frosted glass instead of a solid panel.
+Future<T?> showGlassSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool isScrollControlled = false,
+}) {
+  return showModalBottomSheet<T>(
+    context: context,
+    isScrollControlled: isScrollControlled,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    showDragHandle: false,
+    builder: (sheetContext) => _GlassSheet(child: builder(sheetContext)),
+  );
+}
+
+class _GlassSheet extends StatelessWidget {
+  const _GlassSheet({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: Color(0x991C1C1E),
+            border: Border(top: BorderSide(color: Glass.border, width: 0.8)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 5,
+                margin: const EdgeInsets.only(top: 10, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Palette.white.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              Flexible(child: child),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

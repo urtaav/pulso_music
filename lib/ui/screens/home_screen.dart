@@ -7,7 +7,6 @@ import '../../app/theme.dart';
 import '../../core/format.dart';
 import '../../data/library.dart';
 import '../../state/providers.dart';
-import '../common/artwork_palette.dart';
 import '../common/glass.dart';
 import '../common/pressable.dart';
 import '../common/sections.dart';
@@ -24,7 +23,6 @@ class HomeScreen extends ConsumerWidget {
     final library = ref.watch(libraryValueProvider);
     final recents = library.resolve(ref.watch(recentsProvider));
     final favorites = ref.watch(favoritesProvider);
-    final palette = ref.watch(stablePaletteProvider);
     final handler = ref.read(audioHandlerProvider);
     final recentlyAdded = library.recentlyAdded.take(6).toList();
     final albumsForYou = _albumsOfTheDay(library);
@@ -32,163 +30,130 @@ class HomeScreen extends ConsumerWidget {
     final week = ref.watch(weekSummaryProvider);
     final loading = libraryState.isLoading && library.songs.isEmpty;
 
-    return Stack(
-      children: [
-        // Un toque del color de lo que suena arriba, como el inicio de iOS.
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 360,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 600),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  palette.background.withValues(alpha: 0.9),
-                  Palette.background.withValues(alpha: 0),
+    return SafeArea(
+      bottom: false,
+      child: ListView(
+        padding: EdgeInsets.only(bottom: bottomInset(context)),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 2),
+            child: Text(greetingFor(DateTime.now()), style: TextStyles.display),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text(
+              loading
+                  ? 'Buscando tu música…'
+                  : '${library.songs.length} canciones · '
+                        '${library.albums.length} álbumes',
+              style: TextStyles.caption,
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (!libraryState.isLoading && library.songs.isEmpty)
+            _EmptyLibrary(
+              onRescan: () => ref.read(scannedSongsProvider.notifier).refresh(),
+            )
+          else ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _QuickAction(
+                      label: 'Aleatorio',
+                      icon: Icons.shuffle_rounded,
+                      onTap: () =>
+                          handler.playSongs(library.songs, shuffle: true),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _QuickAction(
+                      label: 'Favoritos',
+                      icon: Icons.favorite_rounded,
+                      iconColor: Palette.coral,
+                      badge: favorites.isEmpty ? null : '${favorites.length}',
+                      onTap: () => openFavorites(context),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _QuickAction(
+                      label: 'Recientes',
+                      icon: Icons.schedule_rounded,
+                      onTap: () => openRecentlyAdded(context),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ),
-        SafeArea(
-          bottom: false,
-          child: ListView(
-            padding: EdgeInsets.only(bottom: bottomInset(context)),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 2),
-                child: Text(
-                  greetingFor(DateTime.now()),
-                  style: TextStyles.display,
+            if (recents.isNotEmpty) ...[
+              const SectionHeader('Escuchadas recientemente'),
+              _Carousel(
+                itemCount: recents.length,
+                itemBuilder: (i) => CoverCard(
+                  song: recents[i],
+                  title: recents[i].title,
+                  subtitle: recents[i].artist,
+                  onTap: () => handler.playSongs(recents, startIndex: i),
+                  onLongPress: () => showSongActions(context, ref, recents[i]),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  loading
-                      ? 'Buscando tu música…'
-                      : '${library.songs.length} canciones · '
-                            '${library.albums.length} álbumes',
-                  style: TextStyles.caption,
+            ],
+            if (topSongs.isNotEmpty) ...[
+              const SectionHeader('Tus más escuchadas'),
+              _Carousel(
+                itemCount: topSongs.length,
+                itemBuilder: (i) => CoverCard(
+                  song: topSongs[i],
+                  title: topSongs[i].title,
+                  subtitle: topSongs[i].artist,
+                  onTap: () => handler.playSongs(topSongs, startIndex: i),
+                  onLongPress: () => showSongActions(context, ref, topSongs[i]),
                 ),
               ),
-              const SizedBox(height: 20),
-              if (!libraryState.isLoading && library.songs.isEmpty)
-                _EmptyLibrary(
-                  onRescan: () =>
-                      ref.read(scannedSongsProvider.notifier).refresh(),
-                )
-              else ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _QuickAction(
-                          label: 'Aleatorio',
-                          icon: Icons.shuffle_rounded,
-                          onTap: () =>
-                              handler.playSongs(library.songs, shuffle: true),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _QuickAction(
-                          label: 'Favoritos',
-                          icon: Icons.favorite_rounded,
-                          iconColor: Palette.coral,
-                          badge: favorites.isEmpty
-                              ? null
-                              : '${favorites.length}',
-                          onTap: () => openFavorites(context),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _QuickAction(
-                          label: 'Recientes',
-                          icon: Icons.schedule_rounded,
-                          onTap: () => openRecentlyAdded(context),
-                        ),
-                      ),
-                    ],
-                  ),
+            ],
+            const SectionHeader('Tu semana'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GlassSurface(
+                radius: 28,
+                padding: const EdgeInsets.all(20),
+                child: WeekChart(week: week),
+              ),
+            ),
+            if (albumsForYou.isNotEmpty) ...[
+              const SectionHeader('Álbumes para hoy'),
+              _Carousel(
+                itemCount: albumsForYou.length,
+                itemBuilder: (i) {
+                  final album = albumsForYou[i];
+                  return CoverCard(
+                    song: album.songs.first,
+                    title: album.title,
+                    subtitle: album.artist,
+                    onTap: () => openAlbum(context, album),
+                  );
+                },
+              ),
+            ],
+            if (recentlyAdded.isNotEmpty) ...[
+              SectionHeader(
+                'Nuevas en tu teléfono',
+                onTap: () => openRecentlyAdded(context),
+              ),
+              for (final (i, song) in recentlyAdded.indexed) ...[
+                if (i > 0) const RowSeparator(),
+                SongTile(
+                  song: song,
+                  onTap: () => handler.playSongs(recentlyAdded, startIndex: i),
                 ),
-                if (recents.isNotEmpty) ...[
-                  const SectionHeader('Escuchadas recientemente'),
-                  _Carousel(
-                    itemCount: recents.length,
-                    itemBuilder: (i) => CoverCard(
-                      song: recents[i],
-                      title: recents[i].title,
-                      subtitle: recents[i].artist,
-                      onTap: () => handler.playSongs(recents, startIndex: i),
-                      onLongPress: () =>
-                          showSongActions(context, ref, recents[i]),
-                    ),
-                  ),
-                ],
-                if (topSongs.isNotEmpty) ...[
-                  const SectionHeader('Tus más escuchadas'),
-                  _Carousel(
-                    itemCount: topSongs.length,
-                    itemBuilder: (i) => CoverCard(
-                      song: topSongs[i],
-                      title: topSongs[i].title,
-                      subtitle: topSongs[i].artist,
-                      onTap: () => handler.playSongs(topSongs, startIndex: i),
-                      onLongPress: () =>
-                          showSongActions(context, ref, topSongs[i]),
-                    ),
-                  ),
-                ],
-                const SectionHeader('Tu semana'),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: GlassSurface(
-                    radius: 28,
-                    padding: const EdgeInsets.all(20),
-                    child: WeekChart(week: week),
-                  ),
-                ),
-                if (albumsForYou.isNotEmpty) ...[
-                  const SectionHeader('Álbumes para hoy'),
-                  _Carousel(
-                    itemCount: albumsForYou.length,
-                    itemBuilder: (i) {
-                      final album = albumsForYou[i];
-                      return CoverCard(
-                        song: album.songs.first,
-                        title: album.title,
-                        subtitle: album.artist,
-                        onTap: () => openAlbum(context, album),
-                      );
-                    },
-                  ),
-                ],
-                if (recentlyAdded.isNotEmpty) ...[
-                  SectionHeader(
-                    'Nuevas en tu teléfono',
-                    onTap: () => openRecentlyAdded(context),
-                  ),
-                  for (final (i, song) in recentlyAdded.indexed) ...[
-                    if (i > 0) const RowSeparator(),
-                    SongTile(
-                      song: song,
-                      onTap: () =>
-                          handler.playSongs(recentlyAdded, startIndex: i),
-                    ),
-                  ],
-                ],
               ],
             ],
-          ),
-        ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 
@@ -209,8 +174,11 @@ class _Carousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Portada + dos líneas de texto; el texto crece con el tamaño de letra
+    // del sistema, así que el alto no puede ser fijo.
+    final textHeight = MediaQuery.textScalerOf(context).scale(38);
     return SizedBox(
-      height: 212,
+      height: 156 + 8 + textHeight + 8,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),

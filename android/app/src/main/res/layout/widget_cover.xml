@@ -39,30 +39,17 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
-            <LinearLayout
+            <TextView
+                android:id="@+id/cover_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical">
-                <TextView
-                    android:id="@+id/cover_artist"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="#B3FFFFFF"
-                    android:textSize="13sp" />
-                <TextView
-                    android:id="@+id/cover_title"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="1"
-                    android:textColor="#FFFFFFFF"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="1"
+                android:textColor="#FFFFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold" />
             <ImageView
                 android:id="@+id/cover_heart"
                 android:layout_width="44dp"
@@ -71,40 +58,15 @@
                 android:padding="11dp"
                 android:src="@drawable/ic_widget_heart" />
         </LinearLayout>
-        <LinearLayout
-            android:id="@+id/cover_progress_row"
+        <ProgressBar
+            android:id="@+id/cover_progress"
+            style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_height="4dp"
+            android:layout_marginTop="6dp"
             android:layout_marginEnd="6dp"
-            android:orientation="vertical">
-            <ProgressBar
-                android:id="@+id/cover_progress"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="4dp"
-                android:max="1000"
-                android:progressDrawable="@drawable/widget_progress" />
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp">
-                <Chronometer
-                    android:id="@+id/cover_elapsed"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentStart="true"
-                    android:textColor="#B3FFFFFF"
-                    android:textSize="12sp" />
-                <TextView
-                    android:id="@+id/cover_duration"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:textColor="#B3FFFFFF"
-                    android:textSize="12sp" />
-            </RelativeLayout>
-        </LinearLayout>
+            android:max="1000"
+            android:progressDrawable="@drawable/widget_progress" />
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -120,30 +82,20 @@
                 android:src="@drawable/ic_widget_prev" />
             <LinearLayout
                 android:id="@+id/cover_play"
-                android:layout_width="wrap_content"
+                android:layout_width="64dp"
                 android:layout_height="46dp"
                 android:layout_marginStart="18dp"
                 android:layout_marginEnd="18dp"
                 android:background="@drawable/widget_pill"
                 android:contentDescription="@string/widget_play_pause"
                 android:gravity="center"
-                android:orientation="horizontal"
-                android:paddingStart="22dp"
-                android:paddingEnd="24dp">
+                android:orientation="horizontal">
                 <ImageView
                     android:id="@+id/cover_play_icon"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:importantForAccessibility="no"
                     android:src="@drawable/ic_widget_pause" />
-                <TextView
-                    android:id="@+id/cover_play_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:fontFamily="sans-serif-medium"
-                    android:textColor="#FFFFFFFF"
-                    android:textSize="16sp" />
             </LinearLayout>
             <ImageView
                 android:id="@+id/cover_next"

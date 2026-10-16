@@ -25,7 +25,6 @@ class HomeWidgetSync {
     required Settings settings,
     required WeekSummary week,
   }) async {
-    final favorite = week.favoriteWeekday;
     final data = {
       'title': item?.title ?? 'pulso',
       'artist': item?.artist ?? 'Toca para empezar',
@@ -40,7 +39,6 @@ class HomeWidgetSync {
       'weekMinutes': week.minutes.join(','),
       'weekToday': '${week.todayIndex}',
       'weekBest': '${week.bestIndex}',
-      'weekFavorite': favorite == -1 ? '' : weekdayNames[favorite],
     };
     // savedAt fuera de la comparación: cambia siempre y no es un cambio real.
     final key = data.toString();

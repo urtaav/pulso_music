@@ -7,6 +7,7 @@ import '../../data/song.dart';
 import '../../state/providers.dart';
 import '../screens/collection_screen.dart';
 import 'artwork.dart';
+import 'glass.dart';
 
 class SongTile extends ConsumerWidget {
   const SongTile({
@@ -108,7 +109,7 @@ Future<void> showSongActions(
 }) async {
   final handler = ref.read(audioHandlerProvider);
   final library = ref.read(libraryValueProvider);
-  await showModalBottomSheet<void>(
+  await showGlassSheet<void>(
     context: context,
     builder: (sheetContext) {
       void close() => Navigator.pop(sheetContext);
@@ -203,7 +204,7 @@ Future<void> showAddToPlaylist(
 ) async {
   final playlists = ref.read(playlistsProvider);
   final controller = ref.read(playlistsProvider.notifier);
-  final choice = await showModalBottomSheet<String>(
+  final choice = await showGlassSheet<String>(
     context: context,
     builder: (sheetContext) => SafeArea(
       child: ListView(

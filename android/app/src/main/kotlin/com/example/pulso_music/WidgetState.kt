@@ -2,7 +2,6 @@ package com.example.pulso_music
 
 import android.content.SharedPreferences
 import android.graphics.Color
-import android.os.SystemClock
 
 /**
  * Lo que Flutter guardó para los widgets (HomeWidgetSync.dart), ya parseado.
@@ -23,7 +22,6 @@ data class WidgetState(
     val weekMinutes: List<Int>,
     val weekToday: Int,
     val weekBest: Int,
-    val weekFavorite: String,
 ) {
     val foreground = if (isDark(background)) Color.WHITE else Color.BLACK
     val secondary = (foreground and 0x00FFFFFF) or (0x99 shl 24)
@@ -36,9 +34,6 @@ data class WidgetState(
         return if (durationMs > 0) position.coerceAtMost(durationMs) else position
     }
 
-    /** Base para un Chronometer que muestra la posición y avanza solo. */
-    fun chronometerBase(): Long = SystemClock.elapsedRealtime() - currentPositionMs()
-
     fun progressPermille(): Int =
         if (durationMs <= 0) 0 else (currentPositionMs() * 1000 / durationMs).toInt()
 
@@ -48,11 +43,6 @@ data class WidgetState(
             val luma = 0.299 * Color.red(color) + 0.587 * Color.green(color) +
                 0.114 * Color.blue(color)
             return luma < 150
-        }
-
-        fun formatTime(ms: Long): String {
-            val total = ms / 1000
-            return "%d:%02d".format(total / 60, total % 60)
         }
 
         fun formatMinutes(minutes: Int): String = when {
@@ -82,7 +72,6 @@ data class WidgetState(
                     ?: List(7) { 0 },
                 weekToday = text("weekToday")?.toIntOrNull() ?: -1,
                 weekBest = text("weekBest")?.toIntOrNull() ?: -1,
-                weekFavorite = text("weekFavorite") ?: "",
             )
         }
     }

@@ -76,18 +76,21 @@ Future<ArtworkPalette> paletteFromBytes(Uint8List bytes) async {
   return ArtworkPalette(dominant: dominantColor(data.buffer.asUint8List()));
 }
 
-/// Palette of any song's cover; generated covers fall back to the accent.
+/// Palette of any song's cover; generated covers use their own gradient.
 final songPaletteProvider = FutureProvider.family<ArtworkPalette, int>((
   ref,
   songId,
 ) async {
-  final accent = Color(ref.watch(settingsProvider.select((s) => s.accent)));
+  final song = ref.read(libraryValueProvider).byId(songId);
+  final generated = ArtworkPalette(
+    dominant: GeneratedCover.colorsFor(song).last,
+  );
   final bytes = await ref.read(artworkCacheProvider).get(songId, 256);
-  if (bytes == null) return ArtworkPalette(dominant: accent);
+  if (bytes == null) return generated;
   try {
     return await paletteFromBytes(bytes);
   } on Exception {
-    return ArtworkPalette(dominant: accent);
+    return generated;
   }
 });
 

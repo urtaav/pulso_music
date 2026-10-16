@@ -156,7 +156,7 @@ class SettingsScreen extends ConsumerWidget {
                 controller.update((s) => s.copyWith(widgetBackground: c)),
           ),
           _ColorRow(
-            label: 'Botón',
+            label: 'Acento',
             colors: Palette.accents,
             selected: settings.widgetAccent,
             onSelected: (c) =>
@@ -175,9 +175,8 @@ class SettingsScreen extends ConsumerWidget {
           const Padding(
             padding: EdgeInsets.fromLTRB(20, 4, 20, 0),
             child: Text(
-              'Para agregarlo: mantén presionada la pantalla de inicio › Widgets › '
-              'pulso. Arrastra sus bordes para cambiar el tamaño: tiene diseño '
-              'pequeño, mediano y grande.',
+              'Para agregarlos: mantén presionada la pantalla de inicio › '
+              'Widgets › pulso. Arrastra sus bordes para cambiar el tamaño.',
               style: TextStyles.caption,
             ),
           ),
@@ -365,7 +364,7 @@ class _ColorRow extends StatelessWidget {
   }
 }
 
-/// Flutter replica of the medium home widget, to preview colors live.
+/// Flutter replica of the compact "Reproductor" widget, to preview colors live.
 class _WidgetPreview extends ConsumerWidget {
   const _WidgetPreview({required this.settings});
 
@@ -374,12 +373,14 @@ class _WidgetPreview extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final song = ref.watch(currentSongProvider);
-    final background = Color(settings.widgetBackground)
-        .withValues(alpha: settings.widgetOpacity);
+    final background = Color(
+      settings.widgetBackground,
+    ).withValues(alpha: settings.widgetOpacity);
     final accent = Color(settings.widgetAccent);
     final ink = Palette.on(Color(settings.widgetBackground));
+    // Sin alto fijo: con la letra grande de Samsung el contenido crece y
+    // la tarjeta con él, en vez de desbordarse.
     return Container(
-      height: 112,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: background,
@@ -389,18 +390,18 @@ class _WidgetPreview extends ConsumerWidget {
       child: Row(
         children: [
           Container(
-            width: 88,
-            height: 88,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               color: accent,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(18),
             ),
             child: Icon(Icons.music_note_rounded, color: Palette.on(accent)),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -413,29 +414,13 @@ class _WidgetPreview extends ConsumerWidget {
                     fontSize: 16,
                   ),
                 ),
-                Text(
-                  song?.artist ?? 'toca para empezar',
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: ink.withValues(alpha: 0.6),
-                    fontSize: 13,
-                  ),
-                ),
                 const SizedBox(height: 6),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Icon(Icons.skip_previous_rounded, color: ink),
-                    const SizedBox(width: 12),
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: accent,
-                      child: Icon(
-                        Icons.play_arrow_rounded,
-                        color: Palette.on(accent),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Icon(Icons.skip_next_rounded, color: ink),
+                    Icon(Icons.fast_rewind_rounded, color: ink, size: 28),
+                    Icon(Icons.play_arrow_rounded, color: ink, size: 36),
+                    Icon(Icons.fast_forward_rounded, color: ink, size: 28),
                   ],
                 ),
               ],

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- "Tu semana": total, gráfica por día (bitmap dibujado en Kotlin) y día favorito. -->
+<!-- "Tu semana": total y gráfica por día (bitmap dibujado en Kotlin). -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -52,13 +52,5 @@
             android:layout_weight="1"
             android:contentDescription="@string/widget_stats_chart"
             android:scaleType="fitCenter" />
-        <TextView
-            android:id="@+id/stats_caption"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textSize="12sp" />
     </LinearLayout>
 </FrameLayout>

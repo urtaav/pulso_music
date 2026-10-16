@@ -7,8 +7,8 @@ import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
 
 /**
- * Widget "Tu semana": minutos escuchados esta semana, la gráfica por día
- * (L–D) con el día récord resaltado y el día de la semana con más música.
+ * Widget "Tu semana": minutos escuchados esta semana y la gráfica por día
+ * (L–D) con el día récord resaltado. Sin más texto: en tamaños chicos se apachurra.
  */
 class StatsWidgetProvider : HomeWidgetProvider() {
 
@@ -28,15 +28,6 @@ class StatsWidgetProvider : HomeWidgetProvider() {
             views.setTextViewText(R.id.stats_total, WidgetState.formatMinutes(state.weekMinutes.sum()))
             views.setTextColor(R.id.stats_total, state.foreground)
             views.setTextColor(R.id.stats_title, state.secondary)
-            views.setTextViewText(
-                R.id.stats_caption,
-                if (state.weekFavorite.isNotEmpty()) {
-                    "Tu día con más música: ${state.weekFavorite}"
-                } else {
-                    "Escucha música y aquí verás tu semana"
-                },
-            )
-            views.setTextColor(R.id.stats_caption, state.secondary)
             views.setInt(R.id.stats_wave, "setColorFilter", state.accent)
             views.setImageViewBitmap(R.id.stats_chart, chart)
             views.setOnClickPendingIntent(R.id.widget_root, WidgetIntents.openApp(context))

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../audio/home_widget_sync.dart';
 import '../../data/library.dart';
 import '../../state/providers.dart';
+import '../common/adaptive_background.dart';
 import '../screens/home_screen.dart';
 import '../screens/library_screen.dart';
 import '../screens/search_screen.dart';
@@ -170,7 +171,8 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     // Mantiene vivo el registro de "escuchadas recientemente".
     ref.watch(recentsProvider);
-    final hasSong = ref.watch(currentSongProvider) != null;
+    final song = ref.watch(currentSongProvider);
+    final hasSong = song != null;
     final media = MediaQuery.of(context);
     // El contenido se dibuja detrás de la barra de vidrio; este padding extra
     // deja que el final de cada lista quede por encima de ella.
@@ -188,20 +190,35 @@ class _AppShellState extends ConsumerState<AppShell> {
       child: Scaffold(
         body: Stack(
           children: [
+            // Un solo fondo para toda la app: la portada que suena, muy
+            // desenfocada. Las pestañas son transparentes encima de él.
+            // RepaintBoundary: el desenfoque se rasteriza una vez, no por frame.
+            Positioned.fill(
+              child: RepaintBoundary(
+                child: AdaptiveBackground(song: song, intensity: 0.85),
+              ),
+            ),
             NotificationListener<UserScrollNotification>(
               onNotification: _onScroll,
               child: MediaQuery(
                 data: contentMedia,
-                child: IndexedStack(
-                  index: _tab,
-                  children: [
-                    for (var i = 0; i < _tabs.length; i++)
-                      Navigator(
-                        key: _navigators[i],
-                        onGenerateRoute: (_) =>
-                            MaterialPageRoute<void>(builder: (_) => _tabs[i]),
-                      ),
-                  ],
+                // Las tarjetas de vidrio dentro de las listas comparten un
+                // solo desenfoque en vez de calcular uno cada una.
+                child: BackdropGroup(
+                  child: Stack(
+                    children: [
+                      for (var i = 0; i < _tabs.length; i++)
+                        _FadingTab(
+                          active: i == _tab,
+                          child: Navigator(
+                            key: _navigators[i],
+                            onGenerateRoute: (_) => MaterialPageRoute<void>(
+                              builder: (_) => _tabs[i],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -217,6 +234,35 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Keeps every tab alive (like IndexedStack) but cross-fades between them,
+/// the way iOS 26 switches tabs, instead of cutting.
+class _FadingTab extends StatelessWidget {
+  const _FadingTab({required this.active, required this.child});
+
+  final bool active;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        ignoring: !active,
+        child: ExcludeSemantics(
+          excluding: !active,
+          // El fundido va fuera de TickerMode: si no, la pestaña que se va
+          // se congelaría a medio desvanecer.
+          child: AnimatedOpacity(
+            opacity: active ? 1 : 0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            child: TickerMode(enabled: active, child: child),
+          ),
         ),
       ),
     );

@@ -5,9 +5,10 @@ import '../../app/theme.dart';
 import '../../core/format.dart';
 import '../../state/providers.dart';
 import '../common/artwork.dart';
+import '../common/glass.dart';
 
 Future<void> showQueueSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showGlassSheet<void>(
     context: context,
     isScrollControlled: true,
     builder: (_) => DraggableScrollableSheet(
